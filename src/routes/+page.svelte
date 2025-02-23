@@ -1,7 +1,15 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
+  // スコアの型定義
+  interface Score {
+    id: number;
+    score: number;
+    createdAt: string;
+  }
+
   // ゲームの状態
+  let highScores: Score[] = [];
   let board: number[][] = Array(4).fill(null).map(() => Array(4).fill(0));
   let score = 0;
   let gameOver = false;
@@ -217,9 +225,43 @@
     }
   }
 
-  // コンポーネントのマウント時に初期化
-  onMount(() => {
+  // スコアの保存
+  async function saveScore(finalScore: number) {
     try {
+      const response = await fetch('/api/scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ score: finalScore })
+      });
+      if (!response.ok) throw new Error('Failed to save score');
+      await loadHighScores();
+    } catch (error) {
+      console.error('Error saving score:', error);
+    }
+  }
+
+  // ハイスコアの読み込み
+  async function loadHighScores() {
+    try {
+      const response = await fetch('/api/scores');
+      if (!response.ok) throw new Error('Failed to fetch scores');
+      highScores = await response.json();
+    } catch (error) {
+      console.error('Error loading high scores:', error);
+    }
+  }
+
+  // ゲームオーバー時にスコアを保存
+  function handleGameOver() {
+    if (gameOver) {
+      saveScore(score);
+    }
+  }
+
+  // コンポーネントのマウント時に初期化
+  onMount(async () => {
+    try {
+      await loadHighScores();
       initGame();
       if (gameContainer) {
         gameContainer.focus();
@@ -228,6 +270,8 @@
       console.error('Mount error:', error);
     }
   });
+
+  $: if (gameOver) handleGameOver();
 </script>
 
 <svelte:head>
@@ -269,6 +313,14 @@
       <div class="message">
         <h2>Game Over!</h2>
         <p>Score: {score}</p>
+        <div class="high-scores">
+          <h3>High Scores</h3>
+          <ul>
+            {#each highScores as {score}, i}
+              <li>{i + 1}. {score}</li>
+            {/each}
+          </ul>
+        </div>
         <button on:click={initGame}>Try Again</button>
       </div>
     </div>
@@ -415,6 +467,27 @@
     cursor: pointer;
     font-weight: bold;
     margin: 0 10px;
+  }
+
+  .high-scores {
+    margin: 20px 0;
+    text-align: left;
+  }
+
+  .high-scores h3 {
+    color: #776e65;
+    margin-bottom: 10px;
+  }
+
+  .high-scores ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .high-scores li {
+    color: #776e65;
+    margin: 5px 0;
+    font-size: 16px;
   }
 
   @media (max-width: 500px) {

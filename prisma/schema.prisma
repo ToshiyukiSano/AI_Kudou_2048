@@ -6,3 +6,9 @@ datasource db {
   provider = "sqlite"
   url      = "file:./database.db"
 }
+
+model Score {
+  id        Int      @id @default(autoincrement())
+  score     Int
+  createdAt DateTime @default(now())
+}
